@@ -38,7 +38,7 @@
 
   /* layout */
   .wrap{max-width:1180px;margin:0 auto;padding:18px 20px 40px}
-  header.sys{border:1px solid var(--g2);display:grid;grid-template-columns:repeat(4,1fr) auto;font-size:.82em;letter-spacing:.06em}
+  header.sys{border:1px solid var(--g2);display:grid;grid-template-columns:repeat(5,1fr) auto;font-size:.82em;letter-spacing:.06em}
   header.sys>div{padding:7px 12px;border-right:1px solid var(--dim)}
   header.sys>div:last-child{border-right:0}
   header.sys b{font-weight:normal;color:var(--grey);text-shadow:none;display:block;font-size:.85em}
@@ -128,6 +128,30 @@
   .mapwrap .tear{position:absolute;left:0;right:0;z-index:1;pointer-events:none;background-repeat:no-repeat;display:none}
   .center{text-align:center}
 
+  /* satellite tracking */
+  .sat{display:grid;grid-template-columns:1fr 300px}
+  .sat .trk{position:relative;border-right:1px solid var(--dim);aspect-ratio:2/1;min-height:200px}
+  .sat canvas{position:absolute;inset:0;width:100%;height:100%}
+  .sat .tele{padding:12px 16px;font-size:.86em}
+  .tele .r{display:flex;justify-content:space-between;border-bottom:1px dotted var(--dim);padding:3px 0}
+  .tele .r b{font-weight:normal;color:var(--grey);text-shadow:none}
+  .sigbars{display:inline-flex;gap:2px;align-items:flex-end;height:12px}
+  .sigbars i{width:4px;background:var(--dim)}
+  .sigbars i.on{background:var(--g);box-shadow:0 0 4px var(--g)}
+  /* map HUD */
+  .hud{position:absolute;inset:0;z-index:3;pointer-events:none;font-size:11px;letter-spacing:.06em}
+  .hud .t{position:absolute;background:rgba(0,0,0,.6);padding:2px 6px;border:1px solid var(--dim)}
+  .hud .tl{left:8px;top:8px}.hud .tr{right:8px;top:8px;text-align:right}
+  .hud .bl{left:8px;bottom:8px}.hud .br{right:8px;bottom:8px;text-align:right}
+  .hud .sweep{position:absolute;top:0;bottom:0;width:2px;background:var(--g);box-shadow:0 0 14px 4px rgba(0,255,102,.45);opacity:.55;animation:sweep 6s linear infinite}
+  @keyframes sweep{from{left:-2%}to{left:102%}}
+  .hud .ch-h,.hud .ch-v{position:absolute;background:rgba(0,255,102,.55);display:none}
+  .hud .ch-h{left:0;right:0;height:1px}.hud .ch-v{top:0;bottom:0;width:1px}
+  .hud .ch-l{position:absolute;display:none;background:rgba(0,0,0,.7);padding:1px 5px;border:1px solid var(--g2);white-space:nowrap}
+  .ticks-x,.ticks-y{position:absolute;color:var(--g2);font-size:10px}
+  .ticks-x{left:0;right:0;top:-2px;display:flex;justify-content:space-around;transform:translateY(-100%)}
+  .ticks-y{top:0;bottom:0;left:-4px;display:flex;flex-direction:column;justify-content:space-around;transform:translateX(-100%);text-align:right}
+  .mapwrap{cursor:crosshair}
   footer{margin-top:24px;font-size:.78em;color:var(--grey);text-shadow:none;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
 
   @media (max-width:760px){
@@ -139,6 +163,10 @@
     .doc td:first-child{width:110px}
     .stamp{position:static;display:inline-block;margin-bottom:14px}
     .mapmeta{grid-template-columns:1fr}
+    .sat{grid-template-columns:1fr}
+    .sat .trk{border-right:0;border-bottom:1px solid var(--dim)}
+    .ticks-x,.ticks-y{display:none}
+    .hud{font-size:9px}
     .pbody{padding:14px}
   }
 </style>
@@ -153,7 +181,8 @@
     <div><b>ARCHIVE SERVER</b>ECHO 3</div>
     <div><b>SECURITY LEVEL</b>RESTRICTED</div>
     <div><b>CONNECTION</b><span class="dot"></span><span id="conn">ENCRYPTED</span></div>
-    <div><b>SYS CLOCK</b><span id="clock">--:--:--</span></div>
+    <div><b>SAT UPLINK</b><span id="satHdr">KH-7 · LOCKED</span></div>
+    <div><b>SYS CLOCK · UTC</b><span id="clock">--:--:--</span></div>
   </header>
 
   <!-- ========== HOME ========== -->
@@ -165,6 +194,25 @@
         <h1>OPERATION:<br>RECOVERY</h1>
         <div class="sub">CLASSIFIED ARCHIVE · ACCESS RESTRICTED</div>
         <p class="typed" id="intro"></p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="bar"><span>ORBITAL SURVEILLANCE · SATELLITE TRACKING</span><span id="satBar">KH-7 / PASS 0412 · ACQUIRING</span></div>
+      <div class="sat">
+        <div class="trk"><canvas id="orbit"></canvas></div>
+        <div class="tele">
+          <div class="r"><b>SATELLITE</b><span>KH-7 "WATCHER"</span></div>
+          <div class="r"><b>ORBIT</b><span>LEO · INC 63.4°</span></div>
+          <div class="r"><b>LAT</b><span id="tLat">--</span></div>
+          <div class="r"><b>LON</b><span id="tLon">--</span></div>
+          <div class="r"><b>ALTITUDE</b><span id="tAlt">--</span></div>
+          <div class="r"><b>VELOCITY</b><span id="tVel">--</span></div>
+          <div class="r"><b>AZ / EL</b><span id="tAz">--</span></div>
+          <div class="r"><b>TARGET AO</b><span>ECHO 3 · SECTOR 7</span></div>
+          <div class="r"><b>NEXT PASS</b><span id="tPass">--</span></div>
+          <div class="r"><b>DOWNLINK</b><span class="sigbars" id="tSig"><i></i><i></i><i></i><i></i><i></i></span></div>
+        </div>
       </div>
     </div>
 
@@ -229,7 +277,18 @@
         </div>
         <div class="mapframe">
           <span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span>
-          <div class="mapwrap" id="mapWrap"><img id="mapImg" alt="EXTRACTION ZONE MAP"><canvas id="mapNoise"></canvas><div class="tear" id="tear"></div></div>
+          <div class="mapwrap" id="mapWrap"><img id="mapImg" alt="EXTRACTION ZONE MAP"><canvas id="mapNoise"></canvas><div class="tear" id="tear"></div>
+            <div class="hud" id="hud">
+              <div class="sweep"></div>
+              <div class="t tl">SAT IMG · KH-7 / PASS 0412<br>SENSOR: EO/IR · RES 0.5 m/px</div>
+              <div class="t tr">ACQ <span id="acq">--</span> UTC<br>CLOUD 12% · SUN EL 31°</div>
+              <div class="t bl">CENTER 37.5042°N 127.0156°E</div>
+              <div class="t br" id="hudCur">CURSOR --</div>
+              <div class="ch-h" id="chH"></div><div class="ch-v" id="chV"></div><div class="ch-l" id="chL"></div>
+            </div>
+          </div>
+          <div class="ticks-x"><span>127.00°E</span><span>127.01°E</span><span>127.02°E</span><span>127.03°E</span></div>
+          <div class="ticks-y"><span>37.52°N</span><span>37.51°N</span><span>37.50°N</span><span>37.49°N</span></div>
         </div>
         <div class="center">
           <p>작전 지역의 마지막 탈출 가능 지점이 확인되었습니다.</p>
@@ -257,7 +316,7 @@ const $ = id => document.getElementById(id);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /* ---------- clock / status ---------- */
-function tick(){const d=new Date();$('clock').textContent=d.toTimeString().slice(0,8)}
+function tick(){const d=new Date();$('clock').textContent=d.toISOString().slice(11,19)}
 tick();setInterval(tick,1000);
 $('sess').textContent=Math.random().toString(16).slice(2,10).toUpperCase();
 const connStates=['ENCRYPTED','ENCRYPTED','ENCRYPTED','UNSTABLE','RECONNECTING'];
@@ -531,6 +590,158 @@ img.src=MAP_FILE;dl.href=MAP_FILE;dl.setAttribute('download','EXTRACTION_ZONE_MA
         await sleep(50+Math.random()*60)}
       tear.style.display='none'}
     loop()},1800+Math.random()*3500)})();
+})();
+
+/* ---------- satellite tracking: rotating globe ---------- */
+(function(){
+  // 지형 데이터: Natural Earth 110m (public domain) → 2° 격자 육지 비트맵
+  const MASK='0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007f800ffc0000000000000000000000000000000000017ff3fffffe00000000000004000000000000000000061df0ffffff0000f8000000003c000000000000000030027c3ffffff80002000000000060000000000000000038afc007ffff00000000030007ffc001d80000000000e88b7b003fffe000000000c003ffffec00000080180009fc33fc00fffa00000300041dffffffeffc80100fffbfe725d8f00fff800001ff000edfffffffffffdfe0ffffffffff87c1ff8000007ffebffdfffffffffffff31fffffffffd1f80fc01e000f9ebfffffffffffffffff00fffffffff8034078000003e7fffffffffffffffffff01fdffffffe01e0038000007e7ffffffffffffffff2f0007807ffffe01e4000000007e3ffffffffffffff82200001001fffff80fe000000182c7fffffffffffffe00f000080007fffff9ff8000003820ffffffffffffffc00e000000007fffff9ffc000006cfffffffffffffffffc08000000003ffffffffc000000dfffffffffffffffff4000000000017ffffff460000007fffffffffffffffff400000000000fffffffc10000007ffffffffffffffffe400000000000fffffff600000007f7f97cffffffffffc000000000000ffffffe00000007f19f03cffffffffff8c00000000000ffffffc00000003c26f7fe7ffffffffe0800000000000ffffff000000007c02dffe7fffffff8408000000000007fffff0000000018740ffe7fffffffe630000000000003fffff000000001fe022ffffffffffc4f0000000000001ffffc000000003ff000ffffffffffc180000000000000ffff8000000007ffef7ffffffffffe0000000000000003fc04000000007ffffffdffffffffe0000000000000005f80400000001fffffefe7fffffffc0000000000000002f80000000001fffffe7f41ffffffc0000000000000000780c00000003ffffff7ff07fffff20000000000000000786100000007ffffffbfe07fcff0000000000000000003cc020000003ffffff9fe03f07e8000000000000000000fc000000003ffffff9f801e07f02000000000000000000f000000007ffffffde001c01f020000000000000000003000000003ffffffe8001c01f8200000000000000000010f0000003fffffff3000c013008000000000000000000aff000001fffffffe000a0120000000000000000000001ff800000fffffffe00020000080000000000000000001fff00000687ffffc000002c1800000000000000000001fff80000001ffff800000143800000000000000000003fff80000001ffff000000187a00000000000000000003fffe0000003fffe0000000c7818000000000000000003ffffc000001fffc00000006762b800000000000000007fffff000000fffc000000020101e00000000000000003fffff800000fffc00000001c001f08000000000000001fffff000000fffc000000000880d02000000000000001ffffe0000007ffc000000000000000000000000000000ffffe000000fffc20000000001c400000000000000000ffffe000000fffc2000000000fc6004000000000000003fffc000000fff8e000000001fe6000000000000000001fffc000000fff0e000000001ffe000000000000000001fffc0000007ff0c00000000ffff808000000000000001fff00000007ff0c00000001ffff800000000000000001ffc00000007fe0800000001ffffc00000000000000001ffc00000003fc0000000001ffffe00000000000000003ff800000003fc0000000001ffffe00000000000000003ff800000001f80000000000ffffe00000000000000003ff000000001f00000000000f07fc00000000000000003f8000000000000000000000801f800800000000000007fc000000000000000000000000f800400000000000007e00000000000000000000000000000600000000000007a00000000000000000000000003000c00000000000003c0000000000000000000000000100180000000000000780000000000000000000000000000300000000000000780000000000000000000000000000000000000000000f00000000000000000800000000000000000000000000e000000000000000000000000000000000000000000007000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000c00000000000001e00020ff9ffe000000000000000000c0000000000013fff87fffffffff00000000000000003e00000001ffffffff3fffffffffffc000000000038400f000001ffffffffffffffffffffffe000000ffff4ffffc000007ffffffffffffffffffffff800001ffffffffe000001ffffffffffffffffffffffff00004fffffffffe00070fffffffffffffffffffffffff000000fffffffffe0080ffffffffffffffffffffffffc000007fffffffffffffffffffffffffffffffffffffff80ff803ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+  const LAND=[];
+  for(let r=0;r<90;r++){
+    const hex=MASK.substr(r*45,45);
+    let bits='';for(const h of hex)bits+=parseInt(h,16).toString(2).padStart(4,'0');
+    bits=bits.slice(-180);
+    for(let c=0;c<180;c++)if(bits[c]==='1')LAND.push([(90-(r+.5)*2)*Math.PI/180,(-180+(c+.5)*2)*Math.PI/180]);
+  }
+  const cv=$('orbit'),x=cv.getContext('2d');
+  const D=Math.PI/180,AO={lat:37.5*D,lon:127.0*D};
+  const TILT=24*D,EARTH_PERIOD=60000,SAT_PERIOD=18000,INC=63.4*D,ALT=1.12;
+  let W=0,H=0,dpr=1;
+  function size(){const r=cv.getBoundingClientRect();dpr=devicePixelRatio||1;W=cv.width=Math.round(r.width*dpr);H=cv.height=Math.round(r.height*dpr)}
+  size();addEventListener('resize',size);
+
+  // 지구 고정 좌표(lat,lon) → 화면. 카메라는 관성 좌표에 고정, 지구가 자전.
+  let theta=0;               // 지구 자전각
+  const VIEW_LON=150*D;      // 카메라가 바라보는 관성 경도
+  function proj(lat,lon,r=1){
+    const l=lon+theta-VIEW_LON;
+    const X=Math.cos(lat)*Math.sin(l),Y=Math.sin(lat),Z=Math.cos(lat)*Math.cos(l);
+    const y2=Y*Math.cos(TILT)-Z*Math.sin(TILT),z2=Y*Math.sin(TILT)+Z*Math.cos(TILT);
+    return [X*r,y2*r,z2*r]}
+  // 위성: 관성 궤도 → 지구 고정 lat/lon
+  function satLL(u){
+    const lat=Math.asin(Math.sin(INC)*Math.sin(u));
+    const lonI=Math.atan2(Math.cos(INC)*Math.sin(u),Math.cos(u))+100*D;
+    return {lat,lon:lonI-theta}}
+  const angDist=(a,b)=>Math.acos(Math.min(1,Math.sin(a.lat)*Math.sin(b.lat)+Math.cos(a.lat)*Math.cos(b.lat)*Math.cos(a.lon-b.lon)));
+  const wrap=a=>((a/D+540)%360-180);
+
+  let last=-1e9;
+  function frame(now){
+    if(!W||cv.width!==Math.round(cv.getBoundingClientRect().width*(devicePixelRatio||1)))size();
+    theta=(now/EARTH_PERIOD)*2*Math.PI;
+    const u=(now/SAT_PERIOD)*2*Math.PI;
+    const R=Math.min(H*.4,W*.3),cx=W*.5,cy=H*.5;
+    const S=([a,b,c])=>[cx+a*R,cy-b*R,c];
+    x.clearRect(0,0,W,H);
+
+    // 배경 별
+    x.fillStyle='rgba(0,255,102,.25)';
+    for(let i=0;i<70;i++){const sx=(i*9301%W),sy=(i*49297%H);x.fillRect(sx,sy,dpr,dpr)}
+
+    // 궤도 (뒤쪽)
+    const orbit=[];for(let k=0;k<=180;k++){const ll=satLL(k/180*2*Math.PI);orbit.push(S(proj(ll.lat,ll.lon,ALT)))}
+    x.lineWidth=1.2*dpr;x.setLineDash([4*dpr,5*dpr]);x.strokeStyle='rgba(0,255,102,.18)';
+    x.beginPath();orbit.forEach((p,i)=>{if(p[2]<0)x.lineTo(p[0],p[1]);else x.moveTo(p[0],p[1])});x.stroke();x.setLineDash([]);
+
+    // 지구 본체
+    const g=x.createRadialGradient(cx-R*.35,cy-R*.35,R*.1,cx,cy,R);
+    g.addColorStop(0,'rgba(0,70,30,.95)');g.addColorStop(1,'rgba(0,14,6,.98)');
+    x.fillStyle=g;x.beginPath();x.arc(cx,cy,R,0,7);x.fill();
+
+    // 경위선
+    x.strokeStyle='rgba(0,200,83,.16)';x.lineWidth=dpr;
+    for(let lo=-180;lo<180;lo+=30){x.beginPath();let pen=false;
+      for(let la=-90;la<=90;la+=5){const p=S(proj(la*D,lo*D));if(p[2]>0){pen?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1]);pen=true}else pen=false}x.stroke()}
+    for(let la=-60;la<=60;la+=30){x.beginPath();let pen=false;
+      for(let lo=-180;lo<=180;lo+=5){const p=S(proj(la*D,lo*D));if(p[2]>0){pen?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1]);pen=true}else pen=false}x.stroke()}
+
+    // 육지 점
+    const ds=Math.max(1.4,R/95)*1;
+    for(const [la,lo] of LAND){const p=proj(la,lo);if(p[2]<=0)continue;
+      x.fillStyle=`rgba(0,255,102,${.18+p[2]*.6})`;x.fillRect(cx+p[0]*R-ds/2,cy-p[1]*R-ds/2,ds,ds)}
+
+    // 대기 테두리
+    x.strokeStyle='rgba(0,255,102,.55)';x.lineWidth=1.5*dpr;x.shadowColor='#00ff66';x.shadowBlur=14*dpr;
+    x.beginPath();x.arc(cx,cy,R,0,7);x.stroke();x.shadowBlur=0;
+
+    // 위성 지상 궤적 (최근)
+    x.strokeStyle='rgba(0,255,102,.5)';x.lineWidth=1.2*dpr;x.beginPath();let pen=false;
+    for(let k=-60;k<=0;k++){const t2=now+k*SAT_PERIOD/120,th=(t2/EARTH_PERIOD)*2*Math.PI,uu=(t2/SAT_PERIOD)*2*Math.PI;
+      const lat=Math.asin(Math.sin(INC)*Math.sin(uu)),lon=Math.atan2(Math.cos(INC)*Math.sin(uu),Math.cos(uu))+100*D-th;
+      const p=S(proj(lat,lon));if(p[2]>0){pen?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1]);pen=true}else pen=false}
+    x.stroke();
+
+    // 표적 지역
+    const ap=S(proj(AO.lat,AO.lon)),blink=Math.floor(now/450)%2;
+    if(ap[2]>0){
+      const s=7*dpr;x.strokeStyle=blink?'#ff3b3b':'rgba(255,59,59,.45)';x.lineWidth=1.5*dpr;
+      x.strokeRect(ap[0]-s,ap[1]-s,s*2,s*2);
+      x.beginPath();x.moveTo(ap[0]-s*2,ap[1]);x.lineTo(ap[0]-s,ap[1]);x.moveTo(ap[0]+s,ap[1]);x.lineTo(ap[0]+s*2,ap[1]);x.stroke();
+      x.fillStyle='#ff3b3b';x.font=`${11*dpr}px monospace`;x.fillText('ECHO 3 AO',ap[0]+s*2.4,ap[1]-s);
+    }
+
+    // 궤도 (앞쪽)
+    x.strokeStyle='rgba(0,255,102,.55)';x.lineWidth=1.2*dpr;x.beginPath();
+    orbit.forEach((p,i)=>{if(p[2]>=0)x.lineTo(p[0],p[1]);else x.moveTo(p[0],p[1])});x.stroke();
+
+    // 위성
+    const sl=satLL(u),sp=S(proj(sl.lat,sl.lon,ALT)),front=sp[2]>=0;
+    const dist=angDist(sl,AO),lock=dist<22*D&&ap[2]>0;
+    if(front){
+      const sub=S(proj(sl.lat,sl.lon));
+      x.strokeStyle='rgba(0,255,102,.35)';x.beginPath();x.moveTo(sp[0],sp[1]);x.lineTo(sub[0],sub[1]);x.stroke();
+      const fr=R*.16*(.4+sub[2]*.6);
+      const fg=x.createRadialGradient(sub[0],sub[1],0,sub[0],sub[1],fr);
+      fg.addColorStop(0,'rgba(0,255,102,.3)');fg.addColorStop(1,'rgba(0,255,102,0)');
+      x.fillStyle=fg;x.beginPath();x.ellipse(sub[0],sub[1],fr,fr*(.35+sub[2]*.65),0,0,7);x.fill();
+      if(lock){x.strokeStyle='rgba(255,59,59,.8)';x.setLineDash([3*dpr,4*dpr]);x.beginPath();x.moveTo(sp[0],sp[1]);x.lineTo(ap[0],ap[1]);x.stroke();x.setLineDash([])}
+      x.fillStyle='#eaffef';x.shadowColor='#00ff66';x.shadowBlur=14*dpr;
+      x.beginPath();x.arc(sp[0],sp[1],3.5*dpr,0,7);x.fill();x.shadowBlur=0;
+      x.fillStyle='#00ff66';x.font=`${11*dpr}px monospace`;x.fillText('KH-7',sp[0]+8*dpr,sp[1]-6*dpr);
+    }
+
+    // 화면 문구
+    x.fillStyle='rgba(0,200,83,.8)';x.font=`${10*dpr}px monospace`;
+    x.fillText('VIEW: ORTHOGRAPHIC · TILT 24°',10*dpr,16*dpr);
+    x.fillText('EARTH ROT: SIMULATED ×1440',10*dpr,30*dpr);
+    x.fillText('SUBSAT '+Math.abs(sl.lat/D).toFixed(2)+(sl.lat>=0?'N ':'S ')+Math.abs(wrap(sl.lon)).toFixed(2)+(wrap(sl.lon)>=0?'E':'W'),10*dpr,H-12*dpr);
+
+    // 텔레메트리
+    if(now-last>200){last=now;
+      const lon=wrap(sl.lon);
+      $('tLat').textContent=Math.abs(sl.lat/D).toFixed(4)+'° '+(sl.lat>=0?'N':'S');
+      $('tLon').textContent=Math.abs(lon).toFixed(4)+'° '+(lon>=0?'E':'W');
+      $('tAlt').textContent=(512+Math.sin(now/7000)*3.2).toFixed(1)+' km';
+      $('tVel').textContent=(7.612+Math.sin(now/5000)*.004).toFixed(3)+' km/s';
+      const az=((Math.atan2(Math.sin(sl.lon-AO.lon)*Math.cos(sl.lat),Math.cos(AO.lat)*Math.sin(sl.lat)-Math.sin(AO.lat)*Math.cos(sl.lat)*Math.cos(sl.lon-AO.lon))/D)+360)%360;
+      $('tAz').textContent=az.toFixed(1)+'° / '+Math.max(0,90-dist/D*4).toFixed(1)+'°';
+      const rem=Math.round((SAT_PERIOD-(now%SAT_PERIOD))/1000);
+      $('tPass').textContent=lock?'OVERHEAD':'T-00:'+String(rem).padStart(2,'0');
+      const bars=lock?5:Math.max(1,Math.round(4-dist/D/45));
+      [...$('tSig').children].forEach((b,i)=>{b.classList.toggle('on',i<bars);b.style.height=(4+i*2)+'px'});
+      $('satBar').textContent='KH-7 / PASS 0412 · '+(lock?'TARGET IN VIEW':'TRACKING');
+      $('satHdr').textContent='KH-7 · '+(lock?'IN VIEW':'LOCKED');
+      $('satHdr').className=lock?'red':'';
+    }
+    requestAnimationFrame(frame)}
+  requestAnimationFrame(frame);
+})();
+
+/* ---------- map HUD: 커서 좌표 ---------- */
+(function(){
+  const wrap=$('mapWrap'),H=$('chH'),V=$('chV'),L=$('chL');
+  const LAT0=37.525,LAT1=37.485,LON0=126.995,LON1=127.035;   // 지도 좌상단~우하단 가상 좌표
+  $('acq').textContent=new Date(Date.now()-3*864e5).toISOString().slice(0,16).replace('T',' ');
+  wrap.addEventListener('pointermove',e=>{
+    const r=wrap.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top;
+    const lat=LAT0+(LAT1-LAT0)*py/r.height,lon=LON0+(LON1-LON0)*px/r.width;
+    H.style.display=V.style.display=L.style.display='block';
+    H.style.top=py+'px';V.style.left=px+'px';
+    L.style.left=Math.min(px+10,r.width-170)+'px';L.style.top=Math.max(py-22,0)+'px';
+    const txt=lat.toFixed(5)+'°N '+lon.toFixed(5)+'°E';
+    L.textContent=txt;$('hudCur').textContent='CURSOR '+txt});
+  wrap.addEventListener('pointerleave',()=>{H.style.display=V.style.display=L.style.display='none';$('hudCur').textContent='CURSOR --'});
 })();
 
 /* ---------- intro ---------- */
