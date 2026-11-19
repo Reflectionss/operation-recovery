@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OPERATION: RECOVERY · ECHO 3 ARCHIVE</title>
+<style>
+  :root{
+    --bg:#020704; --g:#00ff66; --g2:#00c853; --dim:#0b4d26; --dim2:#06301a;
+    --grey:#6f7f74; --red:#ff3b3b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--g);min-height:100%}
+  body{font-family:"Share Tech Mono","IBM Plex Mono","Courier New",monospace;font-size:15px;line-height:1.55;
+       text-shadow:0 0 5px rgba(0,255,102,.55);overflow-x:hidden}
+  ::selection{background:var(--g);color:#000}
+  a{color:inherit}
+
+  /* CRT */
+  .crt::before{content:"";position:fixed;inset:0;z-index:100;pointer-events:none;
+    background:repeating-linear-gradient(to bottom,rgba(0,0,0,.32) 0 1px,transparent 1px 3px)}
+  .crt::after{content:"";position:fixed;inset:0;z-index:101;pointer-events:none;
+    background:radial-gradient(ellipse at center,transparent 60%,rgba(0,0,0,.7) 100%)}
+  .roll{position:fixed;left:0;right:0;height:14vh;z-index:99;pointer-events:none;
+    background:linear-gradient(to bottom,transparent,rgba(0,255,102,.045),transparent);animation:roll 7s linear infinite}
+  @keyframes roll{from{top:-15vh}to{top:105vh}}
+  body{animation:flicker 5s infinite}
+  @keyframes flicker{0%,100%{opacity:1}46%{opacity:.97}47%{opacity:.88}48%{opacity:1}}
+  #noise{position:fixed;inset:0;z-index:98;pointer-events:none;opacity:0;width:100%;height:100%}
+  body.glitch main{animation:glitch .45s steps(2) 1}
+  @keyframes glitch{
+    0%{transform:translate(0);filter:none}
+    20%{transform:translate(-6px,2px);filter:hue-rotate(40deg) contrast(1.6)}
+    40%{transform:translate(5px,-3px);clip-path:inset(20% 0 35% 0)}
+    60%{transform:translate(-3px,1px);clip-path:inset(60% 0 5% 0)}
+    80%{transform:translate(4px,0);filter:contrast(2)}
+    100%{transform:translate(0);clip-path:none;filter:none}}
+
+  /* layout */
+  .wrap{max-width:1180px;margin:0 auto;padding:18px 20px 40px}
+  header.sys{border:1px solid var(--g2);display:grid;grid-template-columns:repeat(4,1fr) auto;font-size:.82em;letter-spacing:.06em}
+  header.sys>div{padding:7px 12px;border-right:1px solid var(--dim)}
+  header.sys>div:last-child{border-right:0}
+  header.sys b{font-weight:normal;color:var(--grey);text-shadow:none;display:block;font-size:.85em}
+  .red{color:var(--red);text-shadow:0 0 6px rgba(255,59,59,.7)}
+  .dot{display:inline-block;width:8px;height:8px;background:var(--g);margin-right:6px;box-shadow:0 0 8px var(--g);animation:blink 1.2s steps(2) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .cursor::after{content:"█";margin-left:2px;animation:blink 1s steps(2) infinite}
+
+  .bar{background:var(--g2);color:#011006;text-shadow:none;font-size:.78em;letter-spacing:.12em;padding:3px 10px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .panel{border:1px solid var(--g2);background:rgba(0,20,8,.55);margin-top:18px}
+  .pbody{padding:18px 20px}
+  hr.l{border:0;border-top:1px dashed var(--dim);margin:14px 0}
+  .muted{color:var(--grey);text-shadow:none}
+
+  /* hero */
+  .hero{padding:34px 22px 28px;position:relative}
+  .hero h1{font-size:clamp(28px,6vw,64px);letter-spacing:.12em;font-weight:normal;line-height:1.1;text-shadow:0 0 14px rgba(0,255,102,.7)}
+  .hero .sub{margin-top:8px;letter-spacing:.3em;font-size:.9em;color:var(--g2)}
+  .hero p{margin-top:18px;max-width:640px;white-space:pre-line}
+  .stamp{position:absolute;right:22px;top:26px;border:2px solid var(--red);color:var(--red);padding:4px 12px;letter-spacing:.25em;transform:rotate(-6deg);font-size:.95em;text-shadow:0 0 6px rgba(255,59,59,.6)}
+
+  /* docs */
+  .docs{list-style:none}
+  .docs li{border-bottom:1px solid var(--dim)}
+  .docs li:last-child{border-bottom:0}
+  .docs button{all:unset;box-sizing:border-box;width:100%;display:grid;grid-template-columns:70px 1fr 140px 120px;gap:12px;padding:12px 20px;cursor:pointer;align-items:center}
+  .docs button:hover,.docs button:focus-visible{background:rgba(0,255,102,.08);box-shadow:inset 3px 0 0 var(--g),0 0 14px rgba(0,255,102,.25);text-shadow:0 0 10px var(--g)}
+  .docs .id{color:var(--grey);text-shadow:none}
+  .docs .st{font-size:.85em;text-align:right}
+
+  .btn{all:unset;box-sizing:border-box;border:1px solid var(--g2);padding:8px 16px;cursor:pointer;letter-spacing:.12em;font-size:.9em;display:inline-block}
+  .btn:hover,.btn:focus-visible{background:var(--g);color:#011006;text-shadow:none;box-shadow:0 0 18px var(--g)}
+  .btn[disabled]{opacity:.4;pointer-events:none}
+
+  /* document view */
+  .doc table{border-collapse:collapse;width:100%;font-size:.92em;margin:10px 0}
+  .doc td{border:1px solid var(--dim);padding:6px 10px;vertical-align:top}
+  .doc td:first-child{width:200px;color:var(--grey);text-shadow:none}
+  .doc h3{font-weight:normal;letter-spacing:.15em;margin:16px 0 6px;color:var(--g2)}
+  .doc p{margin:6px 0}
+  .corrupt{background:var(--dim2);color:var(--dim);text-shadow:none;letter-spacing:.05em;padding:0 3px}
+  .redact{background:var(--g);color:var(--g);text-shadow:none;padding:0 4px;user-select:none}
+  .attach{border:1px dashed var(--red);padding:14px 16px;margin-top:16px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:center;animation:pulse 2.4s infinite}
+  @keyframes pulse{50%{box-shadow:0 0 18px rgba(255,59,59,.35)}}
+  .attach .meta div{font-size:.95em}
+
+  /* screen transition */
+  .view{display:none}
+  .view.on{display:block;animation:boot .5s steps(8)}
+  @keyframes boot{from{clip-path:inset(0 0 100% 0);filter:brightness(2)}to{clip-path:inset(0 0 0 0);filter:none}}
+  .typed{white-space:pre-wrap}
+
+  /* auth */
+  .auth{max-width:620px;margin:0 auto}
+  .auth input{all:unset;box-sizing:border-box;border:1px solid var(--g2);width:100%;padding:12px 14px;font-size:1.4em;letter-spacing:.35em;text-transform:uppercase;caret-color:var(--g);margin:14px 0}
+  .auth input:focus{box-shadow:0 0 16px rgba(0,255,102,.4)}
+  .result{min-height:4.8em;margin-top:14px;white-space:pre-line;letter-spacing:.08em}
+  .shake{animation:shake .35s}
+  @keyframes shake{25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-4px)}}
+
+  /* recovery */
+  .prog{border:1px solid var(--g2);height:26px;margin:14px 0;position:relative}
+  .prog i{display:block;height:100%;width:0;background:repeating-linear-gradient(90deg,var(--g) 0 10px,transparent 10px 13px);box-shadow:0 0 12px var(--g)}
+  .pct{font-size:2.4em;letter-spacing:.1em}
+  .rlog{font-size:.85em;color:var(--g2);height:9em;overflow:hidden;white-space:pre-line}
+
+  /* map */
+  .mapmeta{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 20px;font-size:.92em}
+  .mapframe{border:1px solid var(--g2);margin:18px auto;padding:8px;background:#000;position:relative;max-width:100%;width:fit-content}
+  .mapframe img{display:block;max-width:100%;max-height:75vh;height:auto;width:auto;filter:sepia(.2) saturate(1.1)}
+  .mapframe .c{position:absolute;width:16px;height:16px;border:2px solid var(--g)}
+  .c.tl{left:-3px;top:-3px;border-right:0;border-bottom:0}.c.tr{right:-3px;top:-3px;border-left:0;border-bottom:0}
+  .c.bl{left:-3px;bottom:-3px;border-right:0;border-top:0}.c.br{right:-3px;bottom:-3px;border-left:0;border-top:0}
+  /* map noise */
+  .mapwrap{position:relative;overflow:hidden}
+  .mapwrap img{animation:mapjit 7s infinite}
+  #mapNoise{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;mix-blend-mode:screen;opacity:.16}
+  .mapwrap::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;
+    background:repeating-linear-gradient(to bottom,rgba(0,0,0,.28) 0 1px,transparent 1px 3px)}
+  .mapwrap::after{content:"";position:absolute;left:0;right:0;height:12%;pointer-events:none;z-index:2;
+    background:linear-gradient(to bottom,transparent,rgba(0,255,102,.12),transparent);animation:maproll 4.5s linear infinite}
+  @keyframes maproll{from{top:-15%}to{top:110%}}
+  @keyframes mapjit{0%,91%,100%{transform:none;filter:sepia(.2) saturate(1.1)}
+    92%{transform:translateX(-4px);filter:sepia(.2) hue-rotate(60deg) contrast(1.4)}
+    93%{transform:translateX(3px) skewX(1deg)}94%{transform:none}
+    96%{transform:translateY(2px);filter:brightness(1.4) contrast(1.3)}97%{transform:none}}
+  .mapwrap .tear{position:absolute;left:0;right:0;z-index:1;pointer-events:none;background-repeat:no-repeat;display:none}
+  .center{text-align:center}
+
+  footer{margin-top:24px;font-size:.78em;color:var(--grey);text-shadow:none;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+
+  @media (max-width:760px){
+    body{font-size:14px}
+    header.sys{grid-template-columns:1fr 1fr}
+    header.sys>div{border-bottom:1px solid var(--dim)}
+    .docs button{grid-template-columns:1fr auto;padding:12px 14px}
+    .docs .id,.docs .cls{display:none}
+    .doc td:first-child{width:110px}
+    .stamp{position:static;display:inline-block;margin-bottom:14px}
+    .mapmeta{grid-template-columns:1fr}
+    .pbody{padding:14px}
+  }
+</style>
+</head>
+<body class="crt">
+<div class="roll"></div>
+<canvas id="noise"></canvas>
+
+<main class="wrap">
+  <header class="sys">
+    <div><b>SYSTEM STATUS</b><span class="red">BREACHED</span></div>
+    <div><b>ARCHIVE SERVER</b>ECHO 3</div>
+    <div><b>SECURITY LEVEL</b>RESTRICTED</div>
+    <div><b>CONNECTION</b><span class="dot"></span><span id="conn">ENCRYPTED</span></div>
+    <div><b>SYS CLOCK</b><span id="clock">--:--:--</span></div>
+  </header>
+
+  <!-- ========== HOME ========== -->
+  <section class="view on" id="v-home">
+    <div class="panel">
+      <div class="bar"><span>ROOT://ECHO3/ARCHIVE</span><span>NODE 07 · UPLINK UNSTABLE</span></div>
+      <div class="hero">
+        <div class="stamp">CLASSIFIED</div>
+        <h1>OPERATION:<br>RECOVERY</h1>
+        <div class="sub">CLASSIFIED ARCHIVE · ACCESS RESTRICTED</div>
+        <p class="typed" id="intro"></p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="bar"><span>작전 기록실 · OPERATION RECORDS</span><span>4 FILES · 1 DELETED ATTACHMENT</span></div>
+      <ul class="docs" id="docs"></ul>
+    </div>
+  </section>
+
+  <!-- ========== DOCUMENT ========== -->
+  <section class="view" id="v-doc">
+    <div class="panel doc">
+      <div class="bar"><span id="docPath">ROOT://ECHO3/</span><span id="docCls">CLASSIFICATION</span></div>
+      <div class="pbody" id="docBody"></div>
+    </div>
+    <div style="margin-top:14px"><button class="btn" data-go="home">&lt; RETURN TO ARCHIVE</button></div>
+  </section>
+
+  <!-- ========== AUTH ========== -->
+  <section class="view" id="v-auth">
+    <div class="panel auth">
+      <div class="bar"><span>RECOVERY AUTHENTICATION</span><span>ATTACHMENT_03</span></div>
+      <div class="pbody">
+        <div>TARGET FILE : ATTACHMENT_03</div>
+        <div>FILE STATUS : <span class="red">DELETED</span></div>
+        <div>RECOVERY &nbsp;&nbsp;&nbsp;: AVAILABLE</div>
+        <hr class="l">
+        <p>복구할 파일의 접근 암호를 입력하십시오.<span class="cursor"></span></p>
+        <form id="authForm" autocomplete="off">
+          <input id="pw" type="text" maxlength="24" spellcheck="false" autocapitalize="characters" aria-label="접근 암호">
+          <button class="btn" type="submit">ACCESS AUTHENTICATION</button>
+          <button class="btn" type="button" data-go="doc" style="margin-left:8px">CANCEL</button>
+        </form>
+        <div class="result" id="authRes"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== RECOVERY ========== -->
+  <section class="view" id="v-rec">
+    <div class="panel auth">
+      <div class="bar"><span>RECOVERING DATA</span><span>ATTACHMENT_03</span></div>
+      <div class="pbody">
+        <div id="recTitle">RECOVERING DATA<span class="cursor"></span></div>
+        <div class="pct" id="pct">0%</div>
+        <div class="prog"><i id="progBar"></i></div>
+        <div class="rlog" id="rlog"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== MAP ========== -->
+  <section class="view" id="v-map">
+    <div class="panel">
+      <div class="bar"><span>FILE RECOVERED</span><span>ROOT://ECHO3/EXTRACTION/ATTACHMENT_03</span></div>
+      <div class="pbody">
+        <div class="mapmeta">
+          <div>DOCUMENT &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: EXTRACTION_ZONE_MAP</div>
+          <div>CLASSIFICATION : <span class="red">TOP SECRET</span></div>
+          <div>FILE STATUS &nbsp;&nbsp;: RECOVERED</div>
+          <div>ORIGIN &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ECHO 3 OPERATION</div>
+        </div>
+        <div class="mapframe">
+          <span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span>
+          <div class="mapwrap" id="mapWrap"><img id="mapImg" alt="EXTRACTION ZONE MAP"><canvas id="mapNoise"></canvas><div class="tear" id="tear"></div></div>
+        </div>
+        <div class="center">
+          <p>작전 지역의 마지막 탈출 가능 지점이 확인되었습니다.</p>
+          <p class="muted">해당 자료는 ECHO 3 작전팀이 마지막으로 확보한 기록입니다.</p>
+          <p style="margin-top:16px"><a class="btn" id="dl" download>[ DOWNLOAD RECOVERED MAP ]</a></p>
+          <p style="margin-top:12px"><button class="btn" data-go="home">&lt; RETURN TO ARCHIVE</button></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>LISTENERS SURVIVAL · ECHO 3 ARCHIVE TERMINAL v0.3.7</span>
+    <button class="btn" id="snd" style="padding:2px 10px;font-size:1em">AUDIO: STANDBY</button>
+    <span id="foot">SESSION <span id="sess"></span> · PACKET LOSS <span id="loss">12</span>%</span>
+  </footer>
+</main>
+
+<script>
+/* ===== 설정: 지도 이미지 교체는 이 파일 옆의 map.png 를 바꾸면 됩니다 ===== */
+const MAP_FILE = 'WHOLE-MAP.png';
+const PASS_HASH = '5b50811ff4ac4faecef5e30b46d6c978ed3b3cd93c93358e338c90d254a7c36c';
+
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- clock / status ---------- */
+function tick(){const d=new Date();$('clock').textContent=d.toTimeString().slice(0,8)}
+tick();setInterval(tick,1000);
+$('sess').textContent=Math.random().toString(16).slice(2,10).toUpperCase();
+const connStates=['ENCRYPTED','ENCRYPTED','ENCRYPTED','UNSTABLE','RECONNECTING'];
+setInterval(()=>{
+  const s=connStates[Math.floor(Math.random()*connStates.length)];
+  $('conn').textContent=s;$('conn').className=s==='ENCRYPTED'?'':'red';
+  $('loss').textContent=8+Math.floor(Math.random()*20);
+},3500);
+
+/* ---------- noise bursts ---------- */
+const nc=$('noise'),nx=nc.getContext('2d');
+function noiseBurst(ms=180,alpha=.18){
+  nc.width=innerWidth/3;nc.height=innerHeight/3;
+  const end=performance.now()+ms;
+  (function f(){
+    const img=nx.createImageData(nc.width,nc.height),d=img.data;
+    for(let i=0;i<d.length;i+=4){const v=Math.random()*255;d[i]=0;d[i+1]=v;d[i+2]=v*.4;d[i+3]=255}
+    nx.putImageData(img,0,0);nc.style.opacity=alpha;
+    if(performance.now()<end)requestAnimationFrame(f);else nc.style.opacity=0})();
+}
+(function loop(){setTimeout(()=>{const ms=120+Math.random()*160;noiseBurst(ms,.08+Math.random()*.08);crackle(ms,.05);loop()},6000+Math.random()*9000)})();
+/* ---------- background radio noise (첫 클릭/키 입력 후 시작: 브라우저 자동재생 정책) ---------- */
+let actx=null,bgGain=null,muted=false;
+const BG_VOL=.035;
+function startAudio(){
+  if(actx){if(actx.state==='suspended')actx.resume();return}
+  actx=new (window.AudioContext||window.webkitAudioContext)();
+  const len=actx.sampleRate*3,buf=actx.createBuffer(1,len,actx.sampleRate),d=buf.getChannelData(0);
+  let b0=0,b1=0,b2=0;                       // 핑크 노이즈 (부드러운 쉬익 소리)
+  for(let i=0;i<len;i++){const w=Math.random()*2-1;
+    b0=.99765*b0+w*.099;b1=.963*b1+w*.2965;b2=.57*b2+w*1.0526;d[i]=(b0+b1+b2+w*.1848)*.2}
+  const src=actx.createBufferSource();src.buffer=buf;src.loop=true;
+  const hp=actx.createBiquadFilter();hp.type='highpass';hp.frequency.value=300;
+  const lp=actx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=3500;
+  bgGain=actx.createGain();bgGain.gain.value=muted?0:BG_VOL;
+  // 느린 음량 흔들림 (전파 감도 변화)
+  const lfo=actx.createOscillator(),lg=actx.createGain();lfo.frequency.value=.13;lg.gain.value=BG_VOL*.35;
+  lfo.connect(lg);lg.connect(bgGain.gain);lfo.start();
+  src.connect(hp);hp.connect(lp);lp.connect(bgGain);bgGain.connect(actx.destination);src.start();
+  $('snd').textContent=muted?'AUDIO: OFF':'AUDIO: ON';
+}
+function crackle(ms=150,vol=.08){
+  if(!actx||muted)return;
+  const n=Math.floor(actx.sampleRate*ms/1000),b=actx.createBuffer(1,n,actx.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<n;i++)d[i]=(Math.random()<.3?Math.random()*2-1:0)*(1-i/n);
+  const s=actx.createBufferSource(),g=actx.createGain(),f=actx.createBiquadFilter();
+  f.type='bandpass';f.frequency.value=1800;f.Q.value=.7;g.gain.value=vol;
+  s.buffer=b;s.connect(f);f.connect(g);g.connect(actx.destination);s.start()}
+['pointerdown','keydown'].forEach(ev=>window.addEventListener(ev,startAudio,{once:false,passive:true}));
+$('snd').addEventListener('pointerdown',e=>e.stopPropagation());
+$('snd').addEventListener('click',e=>{
+  e.stopPropagation();startAudio();muted=!muted;
+  if(bgGain)bgGain.gain.value=muted?0:BG_VOL;$('snd').textContent=muted?'AUDIO: OFF':'AUDIO: ON'});
+
+/* 복구 진행 사운드: 진행률이 오를수록 음이 높아지는 데이터 틱 */
+function blip(freq,dur=.04,vol=.05,type='square',at=0){
+  if(!actx||muted)return;
+  const t=actx.currentTime+at,o=actx.createOscillator(),g=actx.createGain();
+  o.type=type;o.frequency.setValueAtTime(freq,t);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.004);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(g);g.connect(actx.destination);o.start(t);o.stop(t+dur+.02)}
+let lastStep=-1;
+const BEEP_HZ=1200;
+function progTick(p){
+  startAudio();
+  const n=Math.floor(p);
+  if(n!==lastStep){lastStep=n;blip(BEEP_HZ,.05,.05)}  // 퍼센트가 오를 때마다 같은 음으로 삑
+}
+function progDone(){
+  lastStep=-1;
+  [880,1175,1568].forEach((f,i)=>blip(f,.18,.06,'sine',i*.11));
+}
+
+function glitch(){crackle(380,.12);document.body.classList.remove('glitch');void document.body.offsetWidth;document.body.classList.add('glitch');noiseBurst(400,.3)}
+
+/* ---------- typewriter ---------- */
+let typeRun=0;
+async function typeInto(el,text,speed=18){
+  const id=++typeRun;el.textContent='';
+  for(const ch of text){if(id!==typeRun)return;el.textContent+=ch;await sleep(speed)}
+}
+
+/* ---------- documents ---------- */
+const C = s => `<span class="corrupt">${s}</span>`;
+const R = n => `<span class="redact">${'█'.repeat(n)}</span>`;
+const DOCS = [
+  {id:'E3-001',title:'ECHO 3 / OPERATION REPORT',cls:'SECRET',status:'PARTIAL',
+   body:`
+    <table>
+      <tr><td>DOCUMENT NO.</td><td>E3-001 / OPR-${R(4)}</td></tr>
+      <tr><td>OPERATION</td><td>ECHO 3 · 격리 구역 정찰 및 생존자 확보</td></tr>
+      <tr><td>DATE</td><td>D+03 · 04:12 (현지 시각)</td></tr>
+      <tr><td>COMMANDING OFFICER</td><td>대위 ${R(6)}</td></tr>
+      <tr><td>STATUS</td><td class="red">OPERATION CANCELLED</td></tr>
+    </table>
+    <h3>1. 작전 개요</h3>
+    <p>ECHO 3 팀은 격리 구역 진입 후 생존자 확보 및 통신 중계기 복구 임무를 수행하였다. 진입 시점의 미확인 개체 활동은 경미한 수준으로 보고되었다.</p>
+    <h3>2. 경과</h3>
+    <p>03:40 · 북측 진입로 통과. 통신 정상.</p>
+    <p>03:58 · 지하 구역에서 비정상 음향 반응 감지. 소리에 반응하는 개체로 추정.</p>
+    <p>04:05 · ${C('▒▒▒ 데이터 손상 ▒▒▒ SECTOR 0x3F READ ERROR ▒▒▒▒▒▒')}</p>
+    <p>04:11 · 팀원 2명 연락 두절. 작전 중단 및 지하 격리 구역으로 후퇴.</p>
+    <h3>3. 지휘관 소견</h3>
+    <p>"개체는 시각이 아닌 청각으로 추적한다. 소음을 내지 마라. 탈출 경로는 ${C('▒▒▒▒▒▒▒▒▒▒')} 로 ${R(9)}."</p>
+    <p class="muted">※ 추가 탈출 자료는 EXTRACTION DATA 문서를 참조할 것.</p>`},
+  {id:'E3-002',title:'ECHO 3 / FINAL TRANSMISSION',cls:'SECRET',status:'CORRUPTED',
+   body:`
+    <table>
+      <tr><td>DOCUMENT NO.</td><td>E3-002 / TX-LOG</td></tr>
+      <tr><td>CHANNEL</td><td>97.62 MHz · EMERGENCY</td></tr>
+      <tr><td>DURATION</td><td>00:01:47 (복원률 41%)</td></tr>
+    </table>
+    <h3>TRANSCRIPT</h3>
+    <p>[치직— 신호 연결]</p>
+    <p>"본부, 여기는 ECHO 3. 응답 바람. 반복한다, 응답 바람."</p>
+    <p>"지하 격리 구역에 고립되었다. 생존 인원 ${R(1)}명. 탄약 부족."</p>
+    <p>"놈들은 듣는다. 숨소리까지 듣는다. ${C('▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒')}"</p>
+    <p>"탈출 지점을 확인했다. 지도는 추출 기록에 첨부했다. 누군가 이걸 듣는다면, ${C('▒▒▒▒')} 거꾸로 ${C('▒▒▒▒▒▒')}"</p>
+    <p>"…지금 당장 나가야 한다."</p>
+    <p>[치직— 통신 두절]</p>`},
+  {id:'E3-003',title:'ECHO 3 / PERSONNEL RECORD',cls:'CONFIDENTIAL',status:'INTACT',
+   body:`
+    <table>
+      <tr><td>DOCUMENT NO.</td><td>E3-003 / PERS</td></tr>
+      <tr><td>UNIT</td><td>ECHO 3 · 특수 수색대</td></tr>
+      <tr><td>PERSONNEL</td><td>6</td></tr>
+    </table>
+    <h3>ROSTER</h3>
+    <table>
+      <tr><td>E3-01 · 지휘관</td><td>대위 ${R(6)} · <span class="red">MIA</span></td></tr>
+      <tr><td>E3-02 · 통신병</td><td>중사 ${R(5)} · <span class="red">MIA</span></td></tr>
+      <tr><td>E3-03 · 의무병</td><td>하사 ${R(5)} · <span class="red">KIA</span></td></tr>
+      <tr><td>E3-04 · 정찰</td><td>병장 ${R(4)} · <span class="red">KIA</span></td></tr>
+      <tr><td>E3-05 · 공병</td><td>상병 ${R(5)} · UNKNOWN</td></tr>
+      <tr><td>E3-06 · 저격</td><td>${C('▒▒▒▒▒▒▒▒ RECORD DELETED ▒▒▒▒▒▒▒▒')}</td></tr>
+    </table>
+    <p class="muted">※ 생존 확인 인원 없음. 최종 교신은 통신병 E3-02 에 의해 송신됨.</p>`},
+  {id:'E3-004',title:'ECHO 3 / EXTRACTION DATA',cls:'TOP SECRET',status:'ATTACHMENT DELETED',
+   body:`
+    <table>
+      <tr><td>DOCUMENT NO.</td><td>E3-004 / EXFIL</td></tr>
+      <tr><td>SUBJECT</td><td>작전 지역 탈출 지점 정보</td></tr>
+      <tr><td>AUTHOR</td><td>E3-02 · 통신병</td></tr>
+      <tr><td>INTEGRITY</td><td class="red">CRITICAL · 첨부파일 손실</td></tr>
+    </table>
+    <h3>본문</h3>
+    <p>격리 구역 외곽의 마지막 탈출 가능 지점을 지도에 표기하여 첨부함.</p>
+    <p>삭제 방지를 위해 첨부파일에 접근 암호를 설정함. 암호는 마지막 교신에 남김.</p>
+    <p>${C('▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒')}</p>
+    <div class="attach">
+      <div class="meta">
+        <div>ATTACHMENT_03 · EXTRACTION_ZONE_MAP</div>
+        <div>FILE STATUS: <span class="red">DELETED</span></div>
+        <div>RECOVERY: AVAILABLE</div>
+      </div>
+      <button class="btn" data-go="auth">RECOVER FILE &gt;</button>
+    </div>`}
+];
+
+$('docs').innerHTML = DOCS.map((d,i)=>`
+  <li><button data-doc="${i}">
+    <span class="id">${d.id}</span>
+    <span>${d.title}</span>
+    <span class="cls ${d.cls==='TOP SECRET'?'red':''}">${d.cls}</span>
+    <span class="st ${d.status==='INTACT'?'muted':'red'}">${d.status}</span>
+  </button></li>`).join('');
+
+let curDoc=0;
+function openDoc(i){
+  curDoc=i;const d=DOCS[i];
+  $('docPath').textContent='ROOT://ECHO3/RECORDS/'+d.id;
+  $('docCls').textContent='CLASSIFICATION: '+d.cls;
+  $('docBody').innerHTML=`<h2 style="font-weight:normal;letter-spacing:.12em">${d.title}</h2><hr class="l">`+d.body;
+  show('doc');
+}
+
+/* ---------- view switching ---------- */
+function show(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  const v=$('v-'+name);void v.offsetWidth;v.classList.add('on');
+  noiseBurst(140,.12);window.scrollTo({top:0});
+  if(name==='auth'){$('pw').value='';$('authRes').textContent='';setTimeout(()=>$('pw').focus(),100)}
+}
+document.addEventListener('click',e=>{
+  const d=e.target.closest('[data-doc]');if(d)return openDoc(+d.dataset.doc);
+  const g=e.target.closest('[data-go]');if(!g)return;
+  const to=g.dataset.go;
+  if(to==='doc')openDoc(curDoc);else show(to);
+});
+
+/* ---------- auth ---------- */
+async function sha256(t){
+  if(window.crypto&&crypto.subtle){
+    const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t));
+    return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+  return null}
+let busy=false;
+$('authForm').addEventListener('submit',async e=>{
+  e.preventDefault();if(busy)return;busy=true;
+  const v=$('pw').value.trim().toUpperCase(),res=$('authRes');
+  res.className='result';res.textContent='VERIFYING...';
+  await sleep(700);
+  let h=await sha256(v);
+  const ok=h?h===PASS_HASH:[...v].reverse().join('')==='EXITNOW';
+  if(!ok){
+    res.className='result red shake';res.textContent='ACCESS DENIED\nINVALID AUTHENTICATION CODE';
+    noiseBurst(200,.2);busy=false;$('pw').select();return}
+  res.className='result';res.textContent='';
+  for(const line of ['ACCESS GRANTED','ENCRYPTION BYPASS SUCCESSFUL','RECOVERING FILE...']){
+    res.textContent+=line+'\n';await sleep(650)}
+  await sleep(500);busy=false;recover();
+});
+
+/* ---------- recovery sequence ---------- */
+const LOGS=['MOUNTING /dev/echo3_archive ...','LOCATING SECTOR 0x3F ...','REBUILDING FILE TABLE ...',
+ 'PARITY CHECK: 3 BLOCKS CORRUPTED','RECONSTRUCTING BLOCK 0x3F12 ...','DECRYPTING PAYLOAD (AES-256) ...',
+ 'VERIFYING CHECKSUM ...','WRITING EXTRACTION_ZONE_MAP ...'];
+async function recover(){
+  show('rec');
+  const bar=$('progBar'),pct=$('pct'),log=$('rlog');log.textContent='';
+  $('recTitle').innerHTML='RECOVERING DATA<span class="cursor"></span>';
+  let p=0,li=0;
+  while(p<100){
+    p=Math.min(100,p+Math.random()*4+.5);
+    if(p>62&&p<70&&Math.random()<.5){await sleep(300);glitch()}  // 중간에 걸리는 듯한 연출
+    bar.style.width=p+'%';pct.textContent=Math.floor(p)+'%';progTick(p);
+    if(p/100*LOGS.length>li){log.textContent+='> '+LOGS[li++]+'\n'}
+    await sleep(60+Math.random()*120);
+  }
+  pct.textContent='100%';progDone();
+  await sleep(300);glitch();await sleep(450);glitch();
+  $('recTitle').textContent='FILE RECOVERED';log.textContent+='> FILE RECOVERED. INTEGRITY 100%\n';
+  await sleep(1300);
+  show('map');glitch();
+}
+
+/* ---------- map ---------- */
+const PLACEHOLDER='data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+<rect width="1200" height="800" fill="#020704"/>
+<g stroke="#0b4d26" stroke-width="1">${Array.from({length:24},(_,i)=>`<line x1="${i*50}" y1="0" x2="${i*50}" y2="800"/>`).join('')}${Array.from({length:16},(_,i)=>`<line x1="0" y1="${i*50}" x2="1200" y2="${i*50}"/>`).join('')}</g>
+<path d="M80 650 C300 560 420 600 560 470 S860 300 1100 180" stroke="#00ff66" stroke-width="4" fill="none" stroke-dasharray="14 10"/>
+<circle cx="1100" cy="180" r="22" fill="none" stroke="#ff3b3b" stroke-width="4"/>
+<text x="600" y="400" fill="#00ff66" font-family="monospace" font-size="34" text-anchor="middle">MAP IMAGE PLACEHOLDER</text>
+<text x="600" y="445" fill="#6f7f74" font-family="monospace" font-size="20" text-anchor="middle">index.html 옆에 map.png 를 넣으면 교체됩니다</text></svg>`);
+const img=$('mapImg'),dl=$('dl');
+img.onerror=()=>{img.onerror=null;img.src=PLACEHOLDER;dl.href=PLACEHOLDER;dl.setAttribute('download','EXTRACTION_ZONE_MAP.svg')};
+img.src=MAP_FILE;dl.href=MAP_FILE;dl.setAttribute('download','EXTRACTION_ZONE_MAP'+(MAP_FILE.match(/\.\w+$/)||['.png'])[0]);
+
+/* ---------- map noise / tearing ---------- */
+(function(){
+  const cv=$('mapNoise'),x=cv.getContext('2d'),tear=$('tear'),wrap=$('mapWrap');
+  cv.width=260;cv.height=260;
+  let last=0;
+  function f(t){
+    if($('v-map').classList.contains('on')&&t-last>70){
+      last=t;const im=x.createImageData(cv.width,cv.height),d=im.data;
+      for(let i=0;i<d.length;i+=4){const v=Math.random()<.5?0:Math.random()*255;d[i]=v*.3;d[i+1]=v;d[i+2]=v*.5;d[i+3]=255}
+      x.putImageData(im,0,0);
+      cv.style.opacity=Math.random()<.04?.45:.12+Math.random()*.08;
+    }
+    requestAnimationFrame(f)}
+  requestAnimationFrame(f);
+  // 가로로 찢어지는 글리치
+  (function loop(){setTimeout(async()=>{
+    if($('v-map').classList.contains('on')&&img.complete){
+      const h=wrap.clientHeight,w=wrap.clientWidth;
+      const n=3+Math.floor(Math.random()*4);
+      for(let k=0;k<n;k++){
+        const top=Math.random()*h,th=4+Math.random()*22,dx=(Math.random()-.5)*40;
+        tear.style.cssText=`display:block;top:${top}px;height:${th}px;background-image:url("${img.src}");background-size:${w}px ${h}px;background-position:${dx}px ${-top}px;filter:hue-rotate(${Math.random()*90}deg) brightness(1.5)`;
+        await sleep(50+Math.random()*60)}
+      tear.style.display='none'}
+    loop()},1800+Math.random()*3500)})();
+})();
+
+/* ---------- intro ---------- */
+typeInto($('intro'),'일부 작전 기록이 손상되었습니다.\n삭제된 자료의 복구를 시도하십시오.\n접근 권한이 확인되지 않은 파일은 열람할 수 없습니다.',28);
+</script>
+</body>
+</html>
